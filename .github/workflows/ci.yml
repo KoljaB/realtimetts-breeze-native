@@ -31,8 +31,16 @@ jobs:
       - name: Install build and Vulkan development tools
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y cmake ninja-build libvulkan-dev glslc
+          sudo apt-get install --no-install-recommends -y cmake ninja-build libvulkan-dev xz-utils
           python -m pip install --upgrade pip build pytest auditwheel
+      - name: Install and verify pinned Linux Vulkan SDK
+        run: |
+          python tools/install_vulkan_sdk.py --platform linux --output-root "$RUNNER_TEMP/vulkan-sdk"
+          sdk=$(cat "$RUNNER_TEMP/vulkan-sdk/sdk-dir.txt")
+          test -x "$sdk/bin/glslc"
+          "$sdk/bin/glslc" --version
+          echo "VULKAN_SDK=$sdk" >> "$GITHUB_ENV"
+          echo "$sdk/bin" >> "$GITHUB_PATH"
       - name: Build pinned native worker and wheel
         run: |
           python build_native.py --platform linux_x86_64 --generator Ninja \
@@ -66,7 +74,7 @@ jobs:
       - name: Install and verify pinned Vulkan SDK
         shell: pwsh
         run: |
-          python tools/install_vulkan_sdk.py --output-root "$env:RUNNER_TEMP\vulkan-sdk"
+          python tools/install_vulkan_sdk.py --platform windows --output-root "$env:RUNNER_TEMP\vulkan-sdk"
           $sdk = Get-Content "$env:RUNNER_TEMP\vulkan-sdk\sdk-dir.txt"
           "VULKAN_SDK=$sdk" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Build pinned native worker and wheel

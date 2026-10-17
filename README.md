@@ -60,10 +60,13 @@ ggml submodule, applies tools/breeze_cpp_controls.json, configures CMake,
 builds breeze-server, stages provenance, and creates an sdist plus platform
 wheel. Source, build, and stage directories default outside this checkout.
 
-Windows CI downloads and verifies LunarG Vulkan SDK 1.3.296.0 with SHA-256
-acb4ae0786fd3e558f8b3c36cc3eba91638984217ba8a6795ec64d2f9ffd8c4b, then
-runs the official installer in copy-only mode. Linux CI installs the Ubuntu
-Vulkan development package and runs auditwheel repair.
+CI downloads and verifies LunarG Vulkan SDK 1.3.296.0 through the official
+versioned endpoints. Windows verifies SHA-256
+acb4ae0786fd3e558f8b3c36cc3eba91638984217ba8a6795ec64d2f9ffd8c4b before
+running the official installer in copy-only mode. Linux verifies SHA-256
+79b0a1593dadc46180526250836f3e53688a9a5fb42a0e5859eb72316dc4d53e, extracts
+the x86_64 tarball, and exposes its pinned glslc to CMake before auditwheel
+repair.
 
 ~~~
 py -3.12 -m pip install build pytest

@@ -397,7 +397,7 @@ COMPONENT_PROFILES["RealtimeTTSBreezeNativeDev"] = {
     "publish_repository": "testpypi",
     "publish_repository_url": "https://test.pypi.org/legacy/",
     "allow_custom_index": False,
-    "allow_extra_artifacts": False,
+    "allow_extra_artifacts": True,
     "version_pattern": r"0\.1\.0\.dev[1-9]\d*",
 }
 
@@ -1800,6 +1800,50 @@ def _validate_native_build_info(
         raise GuardError("wheel native build-info native binary hash is invalid")
     if digest != _sha256_bytes(archive.read(binary_name)):
         raise GuardError("wheel native worker hash differs from build-info")
+
+    native_dependencies = info.get("native_dependencies")
+    if not isinstance(native_dependencies, list):
+        raise GuardError("wheel native build-info native dependencies are invalid")
+    info_relative = PurePosixPath(relative_info)
+    bin_relative = info_relative.parent
+    binary_relative_path = PurePosixPath(binary_relative)
+    if bin_relative == PurePosixPath(".") or binary_relative_path.parent != bin_relative:
+        raise GuardError("native worker and build-info must share a bin directory")
+    bin_prefix = f"{package_dir.rstrip('/')}/{bin_relative.as_posix().rstrip('/')}/"
+    actual_dependencies: dict[str, str] = {}
+    for member_name in members:
+        if not member_name.startswith(bin_prefix) or member_name.endswith("/"):
+            continue
+        relative_name = member_name[len(bin_prefix):]
+        _safe_relative_path(relative_name, "native dependency path")
+        if member_name in {info_name, binary_name}:
+            continue
+        actual_dependencies[relative_name] = member_name
+
+    declared_dependencies: dict[str, str] = {}
+    for entry in native_dependencies:
+        if not isinstance(entry, dict) or set(entry) != {"name", "sha256"}:
+            raise GuardError("wheel native build-info native dependency entry is invalid")
+        name = entry.get("name")
+        digest = entry.get("sha256")
+        if not isinstance(name, str):
+            raise GuardError("wheel native build-info native dependency name is invalid")
+        relative_name = _safe_relative_path(name, "native dependency name").as_posix()
+        if relative_name in declared_dependencies:
+            raise GuardError("wheel native build-info native dependencies contain duplicate names")
+        if relative_name not in actual_dependencies:
+            raise GuardError(
+                f"native dependency entry does not match wheel bin payload: {relative_name}"
+            )
+        if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise GuardError("wheel native build-info native dependency hash is invalid")
+        if digest != _sha256_bytes(archive.read(actual_dependencies[relative_name])):
+            raise GuardError(
+                f"native dependency hash differs from wheel: {relative_name}"
+            )
+        declared_dependencies[relative_name] = digest
+    if set(declared_dependencies) != set(actual_dependencies):
+        raise GuardError("native dependency manifest does not match wheel bin payload")
 
 
 def _validate_platform_wheels(

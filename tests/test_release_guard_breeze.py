@@ -83,13 +83,13 @@ class BreezeNativeDevelopmentProfileTests(unittest.TestCase):
         guard._assert_publish_policy(
             SimpleNamespace(repository="testpypi", index_url=""), profile
         )
-        with self.assertRaisesRegex(guard.GuardError, "extra publication artifacts"):
-            guard._publication_artifacts(
-                profile,
-                Path("realtimetts_breeze_native-0.1.0.dev1-py3-none-manylinux_2_35_x86_64.whl"),
-                Path("realtimetts_breeze_native-0.1.0.dev1.tar.gz"),
-                [Path("unexpected.whl")],
-            )
+        primary = Path("realtimetts_breeze_native-0.1.0.dev1-py3-none-manylinux_2_35_x86_64.whl")
+        sdist = Path("realtimetts_breeze_native-0.1.0.dev1.tar.gz")
+        windows = Path("realtimetts_breeze_native-0.1.0.dev1-py3-none-win_amd64.whl")
+        self.assertEqual(
+            guard._publication_artifacts(profile, primary, sdist, [windows]),
+            [primary, sdist, windows],
+        )
 
     def test_remote_refs_are_pinned_to_breeze_repository_main(self) -> None:
         profile = self.profile()
@@ -149,7 +149,10 @@ class BreezeNativePlatformValidationTests(unittest.TestCase):
         *,
         binary: bytes = b"breeze-worker-binary",
         advertised_binary: bytes | None = None,
+        advertised_dependency: bytes | None = None,
         source_override: bytes | None = None,
+        omit_dependency: bool = False,
+        extra_dependency_entry: bool = False,
     ) -> Path:
         profile = guard.COMPONENT_PROFILES["RealtimeTTSBreezeNativeDev"]
         version = "0.1.0.dev1"
@@ -161,6 +164,25 @@ class BreezeNativePlatformValidationTests(unittest.TestCase):
         platform_contract = contract["platforms"][platform]
         worker = platform_contract["binary"]
         advertised = binary if advertised_binary is None else advertised_binary
+        dependency_name = (
+            "breeze-runtime.dll"
+            if platform == "win_amd64"
+            else "libbreeze-runtime.so"
+        )
+        dependency = b"runtime-dependency"
+        advertised_dependency = (
+            dependency if advertised_dependency is None else advertised_dependency
+        )
+        native_dependencies = [{
+            "name": dependency_name,
+            "sha256": hashlib.sha256(advertised_dependency).hexdigest(),
+        }]
+        if extra_dependency_entry:
+            stale = b"stale-dependency"
+            native_dependencies.append({
+                "name": "stale-runtime.so",
+                "sha256": hashlib.sha256(stale).hexdigest(),
+            })
         info = {
             "format": contract["format"],
             "distribution": contract["distribution"],
@@ -172,6 +194,7 @@ class BreezeNativePlatformValidationTests(unittest.TestCase):
                 "name": Path(worker).name,
                 "sha256": hashlib.sha256(advertised).hexdigest(),
             },
+            "native_dependencies": native_dependencies,
             "cmake": contract["cmake"],
         }
         with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
@@ -184,6 +207,11 @@ class BreezeNativePlatformValidationTests(unittest.TestCase):
                 "def main(): pass\n",
             )
             archive.writestr(f"realtimetts_breeze_native/{worker}", binary)
+            if not omit_dependency:
+                archive.writestr(
+                    f"realtimetts_breeze_native/bin/{dependency_name}",
+                    dependency,
+                )
             archive.writestr(
                 "realtimetts_breeze_native/bin/build-info.json",
                 json.dumps(info, sort_keys=True),
@@ -289,6 +317,60 @@ class BreezeNativePlatformValidationTests(unittest.TestCase):
             with self.assertRaisesRegex(guard.GuardError, "platform set"):
                 guard._validate_platform_wheels(
                     profile, guard._wheel_metadata(linux), linux, [], root, specs
+                )
+
+    def test_required_wheel_extras_are_exact_and_wheels(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            specs = self._source(root)
+            linux = self._wheel(root, "manylinux_2_35_x86_64")
+            windows = self._wheel(root, "win_amd64", binary=b"windows-breeze-worker")
+            profile = guard.COMPONENT_PROFILES["RealtimeTTSBreezeNativeDev"]
+            metadata = guard._wheel_metadata(linux)
+            guard._validate_platform_wheels(profile, metadata, linux, [windows], root, specs)
+
+            with self.assertRaisesRegex(guard.GuardError, "duplicate native wheel platform"):
+                guard._validate_platform_wheels(profile, metadata, linux, [linux], root, specs)
+            with self.assertRaisesRegex(guard.GuardError, "platform set"):
+                guard._validate_platform_wheels(profile, metadata, linux, [], root, specs)
+            wrong = root / "realtimetts_breeze_native-0.1.0.dev1-py3-none-manylinux_2_35_aarch64.whl"
+            wrong.write_bytes(linux.read_bytes())
+            with self.assertRaisesRegex(guard.GuardError, "wheel filename platform and internal WHEEL tag"):
+                guard._validate_platform_wheels(profile, metadata, linux, [wrong], root, specs)
+            with self.assertRaisesRegex(guard.GuardError, "all be wheels"):
+                guard._validate_platform_wheels(
+                    profile, metadata, linux, [root / "unexpected.tar.gz"], root, specs
+                )
+
+    def test_native_dependency_manifest_is_exact_and_hashed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            specs = self._source(root)
+            profile = guard.COMPONENT_PROFILES["RealtimeTTSBreezeNativeDev"]
+            windows = self._wheel(root, "win_amd64")
+
+            tampered = self._wheel(
+                root, "manylinux_2_35_x86_64", advertised_dependency=b"tampered"
+            )
+            with self.assertRaisesRegex(guard.GuardError, "native dependency hash"):
+                guard._validate_platform_wheels(
+                    profile, guard._wheel_metadata(tampered), tampered, [windows], root, specs
+                )
+
+            omitted = self._wheel(
+                root, "manylinux_2_35_x86_64", omit_dependency=True
+            )
+            with self.assertRaisesRegex(guard.GuardError, "native dependency"):
+                guard._validate_platform_wheels(
+                    profile, guard._wheel_metadata(omitted), omitted, [windows], root, specs
+                )
+
+            stale = self._wheel(
+                root, "manylinux_2_35_x86_64", extra_dependency_entry=True
+            )
+            with self.assertRaisesRegex(guard.GuardError, "native dependency"):
+                guard._validate_platform_wheels(
+                    profile, guard._wheel_metadata(stale), stale, [windows], root, specs
                 )
 
     def test_sdist_rejects_extensionless_worker_and_build_info(self) -> None:

@@ -89,9 +89,10 @@ def cmake_definitions(sdk: Path | None, platform: str = "") -> list[str]:
         result.append("-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded")
     if sdk:
         sdk = sdk.resolve()
+        include_dir = sdk / ("Include" if platform == "win_amd64" else "include")
         result.extend([
             f"-DVULKAN_SDK={sdk}", f"-DVulkan_ROOT={sdk}",
-            f"-DVulkan_INCLUDE_DIR={sdk / 'Include'}",
+            f"-DVulkan_INCLUDE_DIR={include_dir}",
         ])
         if platform == "win_amd64":
             result.append(f"-DVulkan_LIBRARY={sdk / 'Lib' / 'vulkan-1.lib'}")
@@ -110,7 +111,17 @@ def configure_and_build(source: Path, build: Path, platform: str,
     command.extend(cmake_args)
     env = os.environ.copy()
     if sdk:
-        env["VULKAN_SDK"] = os.fspath(sdk.resolve())
+        sdk = sdk.resolve()
+        env["VULKAN_SDK"] = os.fspath(sdk)
+        sdk_bin = sdk / ("Bin" if (sdk / "Bin").is_dir() else "bin")
+        if sdk_bin.is_dir():
+            env["PATH"] = os.pathsep.join(
+                [os.fspath(sdk_bin), env.get("PATH", "")]
+            )
+        prefixes = [os.fspath(sdk), os.fspath(sdk / "lib" / "VulkanLoader")]
+        if env.get("CMAKE_PREFIX_PATH"):
+            prefixes.append(env["CMAKE_PREFIX_PATH"])
+        env["CMAKE_PREFIX_PATH"] = os.pathsep.join(prefixes)
     _run(command, env=env)
     _run(["cmake", "--build", os.fspath(build), "--config", "Release",
           "--target", "breeze-server", "--parallel"], env=env)

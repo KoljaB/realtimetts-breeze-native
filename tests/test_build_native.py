@@ -19,6 +19,12 @@ def test_cmake_definitions_are_the_reviewed_static_vulkan_set():
     ]
 
 
+def test_linux_sdk_uses_case_sensitive_include_layout(tmp_path: Path):
+    values = build_native.cmake_definitions(tmp_path, "linux_x86_64")
+    assert f"-DVulkan_INCLUDE_DIR={tmp_path / 'include'}" in values
+    assert f"-DVulkan_INCLUDE_DIR={tmp_path / 'Include'}" not in values
+
+
 def test_verified_sdk_rejects_wrong_checksum(tmp_path: Path, monkeypatch):
     installer = tmp_path / "sdk.exe"
     installer.write_bytes(b"wrong")
