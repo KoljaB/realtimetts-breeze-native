@@ -31,6 +31,7 @@ REQUIRED_CACHE_FLAGS = {
     "BUILD_SHARED_LIBS": "OFF",
     "GGML_CUDA": "OFF",
     "GGML_NATIVE": "OFF",
+    "GGML_OPENMP": "OFF",
     "GGML_VULKAN": "ON",
 }
 ROOT = Path(__file__).resolve().parent

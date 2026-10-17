@@ -10,6 +10,7 @@ import build_package
 def test_cmake_definitions_are_the_reviewed_static_vulkan_set():
     values = build_native.cmake_definitions(None)
     assert "-DCMAKE_BUILD_TYPE=Release" in values
+    assert "-DGGML_OPENMP=OFF" in values
     assert values == [
         "-DCMAKE_BUILD_TYPE=Release",
         *[

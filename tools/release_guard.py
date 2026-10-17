@@ -373,6 +373,7 @@ COMPONENT_PROFILES["RealtimeTTSBreezeNativeDev"] = {
                 "BUILD_SHARED_LIBS": "OFF",
                 "GGML_CUDA": "OFF",
                 "GGML_NATIVE": "OFF",
+                "GGML_OPENMP": "OFF",
                 "GGML_VULKAN": "ON",
             },
         },
