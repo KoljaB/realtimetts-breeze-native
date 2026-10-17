@@ -56,6 +56,8 @@ def ensure_pinned_source(source: Path) -> Path:
         source.parent.mkdir(parents=True, exist_ok=True)
         _run(["git", "clone", "--no-checkout", UPSTREAM_URL,
               os.fspath(source)])
+        _run(_git_command(source, "fetch", "--no-tags", "origin",
+                          build_package.UPSTREAM_REVISION))
         _run(_git_command(source, "checkout", "--detach",
                           build_package.UPSTREAM_REVISION))
     if not (source / ".git").exists():

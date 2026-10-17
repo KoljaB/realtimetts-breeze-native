@@ -5,6 +5,9 @@ and Python 3.11 installed automatically by uv. Run each server in its own termin
 RealtimeTTS **1.0.0.dev2** and the Breeze native worker **0.1.0.dev1** come from
 TestPyPI. Other dependencies come from normal PyPI.
 
+If uv is not installed, run `winget install --id=astral-sh.uv -e`, then open a
+new CMD window. No virtual-environment activation is needed below.
+
 Choose one server below. First startup downloads the model and public
 `demo-neutral` reference, then warms synthesis before `/ready` succeeds.
 Leave the terminal open. Later starts reuse the cache.
@@ -50,7 +53,8 @@ Spanish and the other languages supported by Qwen3-TTS.
 
 ## Qwen GPU
 
-Windows x64 with a supported NVIDIA GPU/driver. The native wheel includes its
+Windows x64 with an NVIDIA GPU of compute capability 7.5 or newer and a
+CUDA-12-compatible driver. The native wheel includes its
 CUDA runtime dependencies; a compiler and local CUDA toolkit are unnecessary.
 
 ```bat

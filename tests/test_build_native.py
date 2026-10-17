@@ -70,5 +70,7 @@ def test_fresh_clone_detaches_to_pinned_revision(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(build_native, "_status", lambda path: "")
     build_native.ensure_pinned_source(source)
     assert "--no-checkout" in calls[0]
-    assert calls[1][-2:] == ["--detach", build_package.UPSTREAM_REVISION]
-    assert "submodule" in calls[2]
+    assert calls[1][-2:] == ["origin", build_package.UPSTREAM_REVISION]
+    assert "--no-tags" in calls[1]
+    assert calls[2][-2:] == ["--detach", build_package.UPSTREAM_REVISION]
+    assert "submodule" in calls[3]
