@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
+import pytest
+
 import build_native
 import build_package
 
@@ -86,3 +88,31 @@ def test_fresh_clone_detaches_to_pinned_revision(monkeypatch, tmp_path: Path):
     assert "--no-tags" in calls[1]
     assert calls[2][-2:] == ["--detach", build_package.UPSTREAM_REVISION]
     assert "submodule" in calls[3]
+
+
+def test_webui_embed_replaces_only_the_pinned_upstream_script(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    source = tmp_path / "source"
+    target = source / "cmake" / "embed_webui.cmake"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"pinned upstream fixture")
+    monkeypatch.setattr(
+        build_native,
+        "UPSTREAM_WEBUI_EMBED_SHA256",
+        hashlib.sha256(b"pinned upstream fixture").hexdigest(),
+    )
+
+    build_native.prepare_webui_embed(source)
+
+    assert target.read_bytes() == build_native.WEBUI_EMBED_SCRIPT.read_bytes()
+
+
+def test_webui_embed_rejects_an_unexpected_upstream_script(tmp_path: Path):
+    source = tmp_path / "source"
+    target = source / "cmake" / "embed_webui.cmake"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"unexpected source")
+
+    with pytest.raises(build_native.NativeBuildError, match="unexpected upstream"):
+        build_native.prepare_webui_embed(source)

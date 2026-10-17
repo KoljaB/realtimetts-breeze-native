@@ -16,11 +16,18 @@ def digest(data: bytes) -> str:
     return "sha256=" + encoded.rstrip(b"=").decode("ascii")
 
 
+def is_directory(info: zipfile.ZipInfo) -> bool:
+    """Return whether a wheel entry is a ZIP directory marker."""
+    return info.is_dir() or info.filename.endswith("/")
+
+
 def finalize(path: Path) -> Path:
     path = path.resolve()
     with zipfile.ZipFile(path, "r") as archive:
-        entries = {info.filename: (info, archive.read(info.filename))
-                   for info in archive.infolist()}
+        entries = {}
+        for info in archive.infolist():
+            payload = b"" if is_directory(info) else archive.read(info.filename)
+            entries[info.filename] = (info, payload)
         comment = archive.comment
     info_names = [name for name in entries if name.endswith("/bin/build-info.json")]
     if len(info_names) != 1:
@@ -44,7 +51,10 @@ def finalize(path: Path) -> Path:
             raise ValueError(f"native dependency is absent from wheel: {name}")
         dependency["sha256"] = hashlib.sha256(entries[name][1]).hexdigest()
     for name in sorted(entries):
-        if not name.startswith(bin_prefix) or name in {info_name, worker_name}:
+        original = entries[name][0]
+        if (is_directory(original)
+                or not name.startswith(bin_prefix)
+                or name in {info_name, worker_name}):
             continue
         dependency_name = name[len(bin_prefix):]
         if dependency_name and dependency_name not in known_dependencies:
@@ -63,7 +73,9 @@ def finalize(path: Path) -> Path:
     entries.pop(record_name)
     records = []
     for name in sorted(entries):
-        payload = entries[name][1]
+        original, payload = entries[name]
+        if is_directory(original):
+            continue
         records.append((name, digest(payload), str(len(payload))))
     records.append((record_name, "", ""))
     import io

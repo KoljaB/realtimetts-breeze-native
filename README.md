@@ -77,6 +77,11 @@ Use --source-dir only for a clean checkout at the pinned revision. The lower
 level build_package.py assembler accepts only a completed Release CMake build,
 the exact controls patch, and an empty stage outside this repository.
 
+The build replaces the pinned upstream WebUI embed script with
+tools/embed_webui.cmake. It keeps the WebUI files byte-for-byte unchanged while
+splitting each generated C++ raw literal into bounded chunks, avoiding MSVC
+C2026 without changing the served assets or WebUI capability.
+
 ## Pinned inputs
 
 - Breeze-TTS-2.cpp: a0e177f91242ebbd2ea8d61548d742c89e4b9e06
