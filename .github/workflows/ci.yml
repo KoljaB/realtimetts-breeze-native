@@ -34,7 +34,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y cmake ninja-build libvulkan-dev xz-utils
-          python -m pip install --upgrade pip build pytest auditwheel
+          python -m pip install --upgrade pip build pytest auditwheel "patchelf>=0.17,<1"
       - name: Install and verify pinned Linux Vulkan SDK
         run: |
           python tools/install_vulkan_sdk.py --platform linux --output-root "$RUNNER_TEMP/vulkan-sdk"
