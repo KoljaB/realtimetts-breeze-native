@@ -1,0 +1,82 @@
+name: native wheels
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: deterministic package tests
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip pytest build
+      - run: python -m pytest -q tests
+
+  linux:
+    name: Linux x64 native wheel
+    runs-on: ubuntu-22.04
+    needs: tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build and Vulkan development tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y cmake ninja-build libvulkan-dev glslc
+          python -m pip install --upgrade pip build pytest auditwheel
+      - name: Build pinned native worker and wheel
+        run: |
+          python build_native.py --platform linux_x86_64 --generator Ninja \
+            --work-dir "$RUNNER_TEMP/realtimetts-breeze-native" \
+            --wheelhouse "$RUNNER_TEMP/realtimetts-breeze-native/wheels"
+      - name: Audit and repair Linux wheel
+        run: |
+          wheel=$(find "$RUNNER_TEMP/realtimetts-breeze-native/wheels" -name '*linux_x86_64.whl' -print -quit)
+          test -n "$wheel"
+          mkdir -p dist/repaired
+          python -m auditwheel repair --lib-sdir /bin --plat manylinux_2_35_x86_64 "$wheel" -w dist/repaired
+          repaired=$(find dist/repaired -name '*.whl' -print -quit)
+          test -n "$repaired"
+          python tools/finalize_wheel.py "$repaired"
+          python -m auditwheel show "$repaired"
+          cp "$RUNNER_TEMP/realtimetts-breeze-native/wheels/"*.tar.gz dist/repaired/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: realtimetts-breeze-native-linux-x64
+          path: dist/repaired/*
+
+  windows:
+    name: Windows x64 native wheel
+    runs-on: windows-2022
+    needs: tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install and verify pinned Vulkan SDK
+        shell: pwsh
+        run: |
+          python tools/install_vulkan_sdk.py --output-root "$env:RUNNER_TEMP\vulkan-sdk"
+          $sdk = Get-Content "$env:RUNNER_TEMP\vulkan-sdk\sdk-dir.txt"
+          "VULKAN_SDK=$sdk" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Build pinned native worker and wheel
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip build pytest
+          python build_native.py --platform win_amd64 --generator "Visual Studio 17 2022" --work-dir "$env:RUNNER_TEMP\realtimetts-breeze-native" --wheelhouse "$env:RUNNER_TEMP\realtimetts-breeze-native\wheels"
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item "$env:RUNNER_TEMP\realtimetts-breeze-native\wheels\*" dist\
+      - uses: actions/upload-artifact@v4
+        with:
+          name: realtimetts-breeze-native-windows-x64
+          path: dist/*
