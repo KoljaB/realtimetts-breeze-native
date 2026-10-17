@@ -16,6 +16,8 @@ PACKAGE_VERSION = "0.1.0.dev1"
 UPSTREAM_URL = "https://github.com/HoppouAI/Breeze-TTS-2.cpp.git"
 UPSTREAM_REVISION = "a0e177f91242ebbd2ea8d61548d742c89e4b9e06"
 GGML_REVISION = "36da57138425487184aa1da2eee2cde155909c6f"
+SPIRV_HEADERS_URL = "https://github.com/KhronosGroup/SPIRV-Headers.git"
+SPIRV_HEADERS_REVISION = "2a9b6f951c7d6b04b6c21fe1bf3f475b68b84801"
 CONTROL_PATCH_SHA256 = (
     "990b37b0d56047ae0bbe85b14709f7b094a070f825599e991a95d0eb1f6d2e6a"
 )
@@ -170,6 +172,8 @@ def assemble(
         "platform": platform,
         "source_revision": UPSTREAM_REVISION,
         "ggml_revision": GGML_REVISION,
+        "spirv_headers_url": SPIRV_HEADERS_URL,
+        "spirv_headers_revision": SPIRV_HEADERS_REVISION,
         "control_patch_sha256": CONTROL_PATCH_SHA256,
         "native_binary": {"name": name, "sha256": _hash(binary)},
         "native_dependencies": [

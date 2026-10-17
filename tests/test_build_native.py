@@ -49,6 +49,17 @@ def test_platform_build_uses_visual_studio_architecture(tmp_path: Path):
     assert calls[0][calls[0].index("-A") + 1] == "x64"
     assert "-DBREEZE_BUILD_SERVER=ON" in calls[0]
     assert "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded" in calls[0]
+    spirv_dir = tmp_path / "spirv-install" / "share" / "cmake" / "SPIRV-Headers"
+    calls.clear()
+    build_native._run = lambda command, **kwargs: calls.append(command)
+    try:
+        build_native.configure_and_build(
+            source, build, "win_amd64", "Visual Studio 17 2022",
+            None, [], spirv_dir
+        )
+    finally:
+        build_native._run = old
+    assert f"-DSPIRV-Headers_DIR={spirv_dir}" in calls[0]
 
 
 def test_fresh_clone_detaches_to_pinned_revision(monkeypatch, tmp_path: Path):

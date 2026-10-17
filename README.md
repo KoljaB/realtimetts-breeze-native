@@ -81,6 +81,7 @@ the exact controls patch, and an empty stage outside this repository.
 
 - Breeze-TTS-2.cpp: a0e177f91242ebbd2ea8d61548d742c89e4b9e06
 - ggml: 36da57138425487184aa1da2eee2cde155909c6f
+- SPIRV-Headers (vulkan-sdk-1.3.296.0): 2a9b6f951c7d6b04b6c21fe1bf3f475b68b84801
 - controls SHA-256: 990b37b0d56047ae0bbe85b14709f7b094a070f825599e991a95d0eb1f6d2e6a
 
 Read bundled notices before redistribution. The model licence is separate from

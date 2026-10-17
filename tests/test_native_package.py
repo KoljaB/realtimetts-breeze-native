@@ -132,6 +132,8 @@ def test_stage_contains_provenance_and_hash(
     assert info["format"] == 1
     assert info["source_revision"] == build_package.UPSTREAM_REVISION
     assert info["ggml_revision"] == build_package.GGML_REVISION
+    assert info["spirv_headers_revision"] == build_package.SPIRV_HEADERS_REVISION
+    assert info["spirv_headers_url"] == build_package.SPIRV_HEADERS_URL
     assert info["native_binary"]["sha256"] == hashlib.sha256(
         native_fixture["binary"].read_bytes()
     ).hexdigest()

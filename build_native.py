@@ -75,10 +75,56 @@ def ensure_pinned_source(source: Path) -> Path:
     return source
 
 
+def ensure_pinned_spirv_headers(source: Path) -> Path:
+    source = source.resolve()
+    if not source.exists():
+        source.parent.mkdir(parents=True, exist_ok=True)
+        _run(["git", "clone", "--no-checkout",
+              build_package.SPIRV_HEADERS_URL, os.fspath(source)])
+        _run(_git_command(source, "fetch", "--no-tags", "origin",
+                          build_package.SPIRV_HEADERS_REVISION))
+        _run(_git_command(source, "checkout", "--detach",
+                          build_package.SPIRV_HEADERS_REVISION))
+    if not (source / ".git").exists():
+        raise NativeBuildError(f"SPIRV-Headers is not a Git checkout: {source}")
+    if _revision(source) != build_package.SPIRV_HEADERS_REVISION:
+        raise NativeBuildError(
+            "SPIRV-Headers is not the pinned revision; use a fresh work directory"
+        )
+    if _status(source):
+        raise NativeBuildError("SPIRV-Headers checkout is dirty")
+    return source
+
+
 def apply_controls(source: Path) -> None:
     _run([sys.executable, "-B",
           os.fspath(build_package.ROOT / "tools" / "prepare_breeze_cpp.py"),
           os.fspath(source)], cwd=build_package.ROOT)
+
+
+def configure_spirv_headers(source: Path, build: Path, install: Path,
+                           platform: str, generator: str) -> Path:
+    for directory in (build, install):
+        if directory.exists() and any(directory.iterdir()):
+            raise NativeBuildError(f"SPIRV-Headers directory is not empty: {directory}")
+    build.mkdir(parents=True, exist_ok=True)
+    install.mkdir(parents=True, exist_ok=True)
+    command = ["cmake", "-S", os.fspath(source), "-B", os.fspath(build),
+               "-G", generator, "-DCMAKE_BUILD_TYPE=Release",
+               "-DSPIRV_HEADERS_ENABLE_TESTS=OFF",
+               "-DSPIRV_HEADERS_ENABLE_INSTALL=ON",
+               f"-DCMAKE_INSTALL_PREFIX={install}"]
+    if platform == "win_amd64" and generator.lower().startswith("visual studio"):
+        command.extend(["-A", "x64"])
+    _run(command)
+    _run(["cmake", "--build", os.fspath(build), "--config", "Release",
+          "--target", "install", "--parallel"])
+    configs = sorted(install.rglob("SPIRV-HeadersConfig.cmake"))
+    if len(configs) != 1:
+        raise NativeBuildError(
+            f"expected one installed SPIRV-HeadersConfig.cmake under {install}"
+        )
+    return configs[0].parent
 
 
 def cmake_definitions(sdk: Path | None, platform: str = "") -> list[str]:
@@ -103,7 +149,8 @@ def cmake_definitions(sdk: Path | None, platform: str = "") -> list[str]:
 
 def configure_and_build(source: Path, build: Path, platform: str,
                         generator: str, sdk: Path | None,
-                        cmake_args: Iterable[str]) -> None:
+                        cmake_args: Iterable[str],
+                        spirv_headers_dir: Path | None = None) -> None:
     build.mkdir(parents=True, exist_ok=True)
     command = ["cmake", "-S", os.fspath(source), "-B", os.fspath(build),
                "-G", generator]
@@ -111,6 +158,8 @@ def configure_and_build(source: Path, build: Path, platform: str,
         command.extend(["-A", "x64"])
     command.extend(cmake_definitions(sdk, platform))
     command.extend(cmake_args)
+    if spirv_headers_dir:
+        command.append(f"-DSPIRV-Headers_DIR={spirv_headers_dir.resolve()}")
     env = os.environ.copy()
     if sdk:
         sdk = sdk.resolve()
@@ -173,6 +222,9 @@ def main(argv: list[str] | None = None) -> int:
             args.platform).resolve()
     source = (args.source_dir or base / "source").resolve()
     build = (args.build_dir or base / "build").resolve()
+    spirv_headers_source = (base / "spirv-headers").resolve()
+    spirv_headers_build = (base / "spirv-headers-build").resolve()
+    spirv_headers_install = (base / "spirv-headers-install").resolve()
     stage = (args.stage_dir or base / "stage").resolve()
     wheelhouse = (args.wheelhouse or base / "wheels").resolve()
     sdk = args.vulkan_sdk or (
@@ -182,8 +234,13 @@ def main(argv: list[str] | None = None) -> int:
         raise NativeBuildError(f"Vulkan SDK directory does not exist: {sdk}")
     ensure_pinned_source(source)
     apply_controls(source)
+    ensure_pinned_spirv_headers(spirv_headers_source)
+    spirv_headers_dir = configure_spirv_headers(
+        spirv_headers_source, spirv_headers_build, spirv_headers_install,
+        args.platform, args.generator
+    )
     configure_and_build(source, build, args.platform, args.generator, sdk,
-                        args.cmake_arg)
+                        args.cmake_arg, spirv_headers_dir)
     for artifact in stage_and_package(source, build, stage, args.platform,
                                       wheelhouse):
         print(f"artifact: {artifact}")
