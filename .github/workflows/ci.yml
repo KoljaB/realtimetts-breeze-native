@@ -74,18 +74,22 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
-      - name: Install and verify pinned Vulkan SDK
+      - name: Install verified portable Windows toolchain
         shell: pwsh
         run: |
-          python tools/install_vulkan_sdk.py --platform windows --output-root "$env:RUNNER_TEMP\vulkan-sdk"
+          python tools/install_windows_toolchain.py --output-root "$env:RUNNER_TEMP\breeze-toolchain"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $sdk = Get-Content "$env:RUNNER_TEMP\vulkan-sdk\sdk-dir.txt"
-          "VULKAN_SDK=$sdk" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $compiler = "$env:RUNNER_TEMP\breeze-toolchain\mingw64\bin"
+          $sdk = "$env:RUNNER_TEMP\breeze-toolchain\ucrt64"
+          "BREEZE_COMPILER=$compiler" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "BREEZE_SDK=$sdk" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "$compiler" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "$sdk\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Build pinned native worker and wheel
         shell: pwsh
         run: |
           python -m pip install --upgrade pip build pytest
-          python build_native.py --platform win_amd64 --generator "Visual Studio 17 2022" --work-dir "$env:RUNNER_TEMP\realtimetts-breeze-native" --wheelhouse "$env:RUNNER_TEMP\realtimetts-breeze-native\wheels"
+          python build_native.py --platform win_amd64 --generator Ninja --work-dir "$env:RUNNER_TEMP\realtimetts-breeze-native" --wheelhouse "$env:RUNNER_TEMP\realtimetts-breeze-native\wheels" --cmake-arg="-DCMAKE_C_COMPILER=$env:BREEZE_COMPILER/gcc.exe" --cmake-arg="-DCMAKE_CXX_COMPILER=$env:BREEZE_COMPILER/g++.exe" --cmake-arg="-DCMAKE_MAKE_PROGRAM=$env:BREEZE_COMPILER/ninja.exe" --cmake-arg="-DVulkan_INCLUDE_DIR=$env:BREEZE_SDK/include" --cmake-arg="-DVulkan_LIBRARY=$env:BREEZE_SDK/lib/libvulkan-1.dll.a" --cmake-arg="-DVulkan_GLSLC_EXECUTABLE=$env:BREEZE_SDK/bin/glslc.exe" --cmake-arg="-DVulkan_GLSLANG_VALIDATOR_EXECUTABLE=$env:BREEZE_SDK/bin/glslangValidator.exe"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           New-Item -ItemType Directory -Force dist | Out-Null
           Copy-Item "$env:RUNNER_TEMP\realtimetts-breeze-native\wheels\*" dist\
