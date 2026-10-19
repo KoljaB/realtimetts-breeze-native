@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - codex/breeze-portable-cache
   pull_request:
 
 permissions:

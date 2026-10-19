@@ -91,3 +91,12 @@ C2026 without changing the served assets or WebUI capability.
 
 Read bundled notices before redistribution. The model licence is separate from
 the package licence.
+
+## Portable performance build (0.1.0rc2)
+
+Both platform wheels include the reference-prefix cache, bounded cross-sentence
+context, cache invalidation and native timing metrics from the working runtime.
+These are shared source changes; GGML_NATIVE stays OFF. No machine-specific CPU
+affinity masks, thread counts or GPU device IDs are embedded in the wheels.
+Enable the reference-prefix cache through the RealtimeTTS Python server option
+--reference-prefix-cache. Vulkan drivers remain a host requirement.
