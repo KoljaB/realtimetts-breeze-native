@@ -5,9 +5,8 @@ The wheel includes a shell-free launcher, native build provenance, and
 third-party notices. End users install a platform wheel; they do not need a
 C++ compiler, CMake, Vulkan SDK, or local native build.
 
-The 0.1.0.dev1 package is a TestPyPI candidate. Publication is performed by
-the RealtimeTTS release guard after clean-commit, exact-artifact, runtime
-parity, and signed-attestation checks. Model weights, credentials, GPU drivers,
+The 0.1.0rc2 package is a TestPyPI candidate. Release wheels are verified
+against their exact installed runtime artifacts before publication. Model weights, credentials, GPU drivers,
 and vendor ICDs are never included.
 
 ## Supported targets
@@ -25,19 +24,19 @@ hashed in build-info.json, except the system Vulkan loader. Linux auditwheel
 may vendor an ELF loader dependency; release evidence records the actual
 show and repair output.
 
-## Install and run from CMD.exe
+## Install and run on Windows or Linux
 
 The end-user preview is installed from **TestPyPI** with **uv**. A compiler,
 Git checkout and local wheel files are unnecessary. After the preview is published:
 
 ~~~bat
 uv venv --python 3.11 .venv-breeze
-uv pip install --python .venv-breeze\Scripts\python.exe --find-links https://test.pypi.org/simple/realtimetts/ --find-links https://test.pypi.org/simple/realtimetts-breeze-native/ "realtimetts[breeze-server]==1.0.0.dev2"
-.venv-breeze\Scripts\realtimetts-breeze-server.exe --download-model --demo-voice --port 18086
+uv pip install --python .venv-breeze --find-links https://test.pypi.org/simple/realtimetts/ --find-links https://test.pypi.org/simple/realtimetts-breeze-native/ "realtimetts[breeze-server]==0.9.0rc4"
+uv run --no-project --python .venv-breeze python -m RealtimeTTS.breeze_server --reference-prefix-cache --port 18086
 ~~~
 
-Open **http://127.0.0.1:18086/studio** after warmup and select **demo-neutral**.
-First startup downloads the pinned 3.6 GB Q8_0 model and the public reference;
+Open **http://127.0.0.1:18086/studio** after warmup and select a bundled voice.
+First startup downloads the pinned 3.6 GB Q8_0 model ;
 later starts reuse cached assets. RealtimeTTS starts and stops the native worker.
 
 The [complete Windows guide](docs/windows-server-preview.md) also provides
@@ -46,8 +45,8 @@ Qwen CPU/GPU setup, readiness checks and a tiny Python streaming client.
 To install only the worker:
 
 ~~~bat
-uv pip install --python .venv-breeze\Scripts\python.exe --find-links https://test.pypi.org/simple/realtimetts-breeze-native/ "realtimetts-breeze-native==0.1.0.dev1"
-.venv-breeze\Scripts\python.exe -c "from realtimetts_breeze_native import executable_path; print(executable_path())"
+uv pip install --python .venv-breeze --find-links https://test.pypi.org/simple/realtimetts-breeze-native/ "realtimetts-breeze-native==0.1.0rc2"
+uv run --no-project --python .venv-breeze python -c "from realtimetts_breeze_native import executable_path; print(executable_path())"
 ~~~
 
 The native package does not download weights. Model caching and
@@ -60,18 +59,14 @@ ggml submodule, applies tools/breeze_cpp_controls.json, configures CMake,
 builds breeze-server, stages provenance, and creates an sdist plus platform
 wheel. Source, build, and stage directories default outside this checkout.
 
-CI downloads and verifies LunarG Vulkan SDK 1.3.296.0 through the official
-versioned endpoints. Windows verifies SHA-256
-acb4ae0786fd3e558f8b3c36cc3eba91638984217ba8a6795ec64d2f9ffd8c4b before
-running the official installer in copy-only mode. Linux verifies SHA-256
-79b0a1593dadc46180526250836f3e53688a9a5fb42a0e5859eb72316dc4d53e, extracts
-the x86_64 tarball, and exposes its pinned glslc to CMake before auditwheel
-repair.
-
-~~~
-py -3.12 -m pip install build pytest
-py -3.12 build_native.py --platform win_amd64 --generator "Visual Studio 17 2022"
-~~~
+Linux CI downloads and verifies LunarG Vulkan SDK 1.3.296.0 through the official
+versioned endpoint, then repairs the wheel with auditwheel. Windows CI uses
+Winlibs GCC 12.2.0 and MSYS2 shaderc 2026.3, glslang 16.3.0 and Vulkan 1.4.357.0.
+The exact archive names and SHA-256 hashes are pinned in
+tools/install_windows_toolchain.py. These reproduce the working Windows compiler
+and shader tools while keeping GGML_NATIVE=OFF. See .github/workflows/ci.yml for
+the complete reproducible build commands. Users of the wheels need neither SDK
+nor compiler.
 
 Use --source-dir only for a clean checkout at the pinned revision. The lower
 level build_package.py assembler accepts only a completed Release CMake build,
@@ -87,7 +82,7 @@ C2026 without changing the served assets or WebUI capability.
 - Breeze-TTS-2.cpp: a0e177f91242ebbd2ea8d61548d742c89e4b9e06
 - ggml: 36da57138425487184aa1da2eee2cde155909c6f
 - SPIRV-Headers (vulkan-sdk-1.3.296.0): 2a9b6f951c7d6b04b6c21fe1bf3f475b68b84801
-- controls SHA-256: 990b37b0d56047ae0bbe85b14709f7b094a070f825599e991a95d0eb1f6d2e6a
+- controls SHA-256: 5d4e5e3b69c0fa1f81bb4d291b78764270c6dbb18656e2a4ce4bce9f2dbabf4e
 
 Read bundled notices before redistribution. The model licence is separate from
 the package licence.
