@@ -357,7 +357,7 @@ COMPONENT_PROFILES["RealtimeTTSBreezeNativeDev"] = {
         "source_revision": "a0e177f91242ebbd2ea8d61548d742c89e4b9e06",
         "ggml_revision": "36da57138425487184aa1da2eee2cde155909c6f",
         "control_patch_sha256": (
-            "990b37b0d56047ae0bbe85b14709f7b094a070f825599e991a95d0eb1f6d2e6a"
+            "12c938d19fcf612bbfffc39791b7741d0303c2ffb6cfd554034e08051c25e9b3"
         ),
         "cmake": {
             "source_matches": True,
@@ -399,7 +399,63 @@ COMPONENT_PROFILES["RealtimeTTSBreezeNativeDev"] = {
     "publish_repository_url": "https://test.pypi.org/legacy/",
     "allow_custom_index": False,
     "allow_extra_artifacts": True,
-    "version_pattern": r"0\.1\.0\.dev[1-9]\d*",
+    "version_pattern": r"0\.1\.0(?:\.dev|rc)[1-9]\d*",
+}
+
+# The CUDA 12 worker is the same pinned source built for NVIDIA GPUs and
+# published as its own Linux-only distribution.
+COMPONENT_PROFILES["RealtimeTTSBreezeNativeCUDA12Dev"] = {
+    **COMPONENT_PROFILES["RealtimeTTSBreezeNativeDev"],
+    "distribution": "realtimetts-breeze-native-cuda12",
+    "packages": ((
+        "realtimetts_breeze_native_cuda12",
+        "src/realtimetts_breeze_native_cuda12",
+        "realtimetts_breeze_native_cuda12",
+    ),),
+    "sdist_package_dirs": {
+        "realtimetts_breeze_native_cuda12": "src/realtimetts_breeze_native_cuda12",
+    },
+    "service_name": "breeze-native-cuda12-qualification.service",
+    "binary_package_prefixes": {"realtimetts_breeze_native_cuda12": ("bin/",)},
+    "required_wheel_platforms": ("manylinux_2_35_x86_64",),
+    "required_native_library_groups": {
+        "manylinux_2_35_x86_64": (
+            ("realtimetts_breeze_native_cuda12/bin/breeze-server",),
+        ),
+    },
+    "native_build_info": {
+        **COMPONENT_PROFILES["RealtimeTTSBreezeNativeDev"]["native_build_info"],
+        "distribution": "realtimetts_breeze_native_cuda12",
+        "cmake": {
+            "source_matches": True,
+            "build_type": "Release",
+            "cache_flags": {
+                "BREEZE_BUILD_CLI": "OFF",
+                "BREEZE_BUILD_SERVER": "ON",
+                "BREEZE_BUILD_SHARED": "OFF",
+                "BREEZE_BUILD_TESTS": "OFF",
+                "BREEZE_CUDA": "ON",
+                "BREEZE_MP3": "OFF",
+                "BREEZE_VULKAN": "OFF",
+                "BUILD_SHARED_LIBS": "OFF",
+                "CMAKE_CUDA_ARCHITECTURES": "86-real;89-real;90-real;120",
+                "GGML_CUDA": "ON",
+                "GGML_NATIVE": "OFF",
+                "GGML_OPENMP": "OFF",
+                "GGML_VULKAN": "OFF",
+            },
+        },
+        "platforms": {
+            "manylinux_2_35_x86_64": {
+                "source_platform": "linux_x86_64",
+                "binary": "bin/breeze-server",
+            },
+        },
+    },
+    "sdist_forbidden_paths": (
+        "src/realtimetts_breeze_native_cuda12/bin/",
+        "src/realtimetts_breeze_native_cuda12/build-info.json",
+    ),
 }
 
 
