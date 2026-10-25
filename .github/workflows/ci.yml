@@ -65,6 +65,50 @@ jobs:
           name: realtimetts-breeze-native-linux-x64
           path: dist/repaired/*
 
+  linux-cuda12:
+    name: Linux x64 CUDA 12 native wheel
+    runs-on: ubuntu-22.04
+    needs: tests
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install build tools and CUDA 12.8 compiler and libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y cmake ninja-build wget
+          wget -q https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
+          sudo dpkg -i cuda-keyring_1.1-1_all.deb
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y cuda-nvcc-12-8 cuda-cudart-dev-12-8 libcublas-dev-12-8 cuda-driver-dev-12-8
+          echo "/usr/local/cuda-12.8/bin" >> "$GITHUB_PATH"
+          echo "CUDACXX=/usr/local/cuda-12.8/bin/nvcc" >> "$GITHUB_ENV"
+          # The runner has no GPU driver; link libcuda.so.1 against the toolkit stub.
+          mkdir -p "$RUNNER_TEMP/cuda-stubs"
+          ln -s /usr/local/cuda-12.8/lib64/stubs/libcuda.so "$RUNNER_TEMP/cuda-stubs/libcuda.so.1"
+          python -m pip install --upgrade pip build pytest "auditwheel>=6" "patchelf>=0.17,<1"
+      - name: Build pinned CUDA worker and wheel
+        run: |
+          python build_native.py --backend cuda12 --platform linux_x86_64 --generator Ninja             --work-dir "$RUNNER_TEMP/realtimetts-breeze-native-cuda12"             --wheelhouse "$RUNNER_TEMP/realtimetts-breeze-native-cuda12/wheels"             --cmake-arg=-DCMAKE_CUDA_COMPILER=/usr/local/cuda-12.8/bin/nvcc             --cmake-arg="-DCMAKE_EXE_LINKER_FLAGS=-Wl,-rpath-link,$RUNNER_TEMP/cuda-stubs"
+      - name: Audit and repair Linux CUDA wheel
+        run: |
+          wheel=$(find "$RUNNER_TEMP/realtimetts-breeze-native-cuda12/wheels" -name '*linux_x86_64.whl' -print -quit)
+          test -n "$wheel"
+          mkdir -p dist/repaired
+          # Driver, CUDA runtime and cuBLAS come from the host and NVIDIA's wheels.
+          python -m auditwheel repair --lib-sdir /bin --plat manylinux_2_35_x86_64             --exclude libcuda.so.1 --exclude libcudart.so.12             --exclude libcublas.so.12 --exclude libcublasLt.so.12             "$wheel" -w dist/repaired
+          repaired=$(find dist/repaired -name '*.whl' -print -quit)
+          test -n "$repaired"
+          python tools/finalize_wheel.py "$repaired"
+          python -m auditwheel show "$repaired"
+          ls -la dist/repaired
+          cp "$RUNNER_TEMP/realtimetts-breeze-native-cuda12/wheels/"*.tar.gz dist/repaired/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: realtimetts-breeze-native-cuda12-linux-x64
+          path: dist/repaired/*
+
   windows:
     name: Windows x64 native wheel
     runs-on: windows-2022

@@ -39,7 +39,8 @@ REQUIRED_CACHE_FLAGS = {
 # The CUDA profile builds the same pinned source for NVIDIA GPUs. Its wheel is a
 # separate distribution so the portable Vulkan wheel stays small.
 CUDA_PACKAGE_NAME = "realtimetts_breeze_native_cuda12"
-CUDA_ARCHITECTURES = "86;89;90;120"
+# Machine code per architecture; PTX only for the newest keeps the wheel small.
+CUDA_ARCHITECTURES = "86-real;89-real;90-real;120"
 CUDA_PLATFORMS = frozenset({"linux_x86_64"})
 CUDA_CACHE_FLAGS = {
     **REQUIRED_CACHE_FLAGS,
@@ -191,7 +192,7 @@ def assemble(
     if cache.get("CMAKE_BUILD_TYPE", "").lower() != "release":
         raise BuildInputError("CMAKE_BUILD_TYPE must be Release")
     for key, expected in cache_flags.items():
-        if cache.get(key, "").upper() != expected:
+        if cache.get(key, "").upper() != expected.upper():
             raise BuildInputError(f"CMake flag {key} must be {expected}")
 
     workers = [path for path in build.rglob(name) if path.is_file()]
