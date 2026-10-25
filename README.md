@@ -5,7 +5,7 @@ The wheel includes a shell-free launcher, native build provenance, and
 third-party notices. End users install a platform wheel; they do not need a
 C++ compiler, CMake, Vulkan SDK, or local native build.
 
-The 0.1.0rc2 package is a TestPyPI candidate. Release wheels are verified
+The 0.1.0rc3 package is a TestPyPI candidate. Release wheels are verified
 against their exact installed runtime artifacts before publication. Model weights, credentials, GPU drivers,
 and vendor ICDs are never included.
 
@@ -31,7 +31,7 @@ Git checkout and local wheel files are unnecessary. After the preview is publish
 
 ~~~bat
 uv venv --python 3.11 .venv-breeze
-uv pip install --python .venv-breeze --find-links https://test.pypi.org/simple/realtimetts/ --find-links https://test.pypi.org/simple/realtimetts-breeze-native/ "realtimetts[breeze-server]==0.9.0rc4"
+uv pip install --python .venv-breeze --find-links https://test.pypi.org/simple/realtimetts/ --find-links https://test.pypi.org/simple/realtimetts-breeze-native/ "realtimetts[breeze-server]==0.9.0rc12"
 uv run --no-project --python .venv-breeze python -m RealtimeTTS.breeze_server --reference-prefix-cache --port 18086
 ~~~
 
@@ -45,7 +45,7 @@ Qwen CPU/GPU setup, readiness checks and a tiny Python streaming client.
 To install only the worker:
 
 ~~~bat
-uv pip install --python .venv-breeze --find-links https://test.pypi.org/simple/realtimetts-breeze-native/ "realtimetts-breeze-native==0.1.0rc2"
+uv pip install --python .venv-breeze --find-links https://test.pypi.org/simple/realtimetts-breeze-native/ "realtimetts-breeze-native==0.1.0rc3"
 uv run --no-project --python .venv-breeze python -c "from realtimetts_breeze_native import executable_path; print(executable_path())"
 ~~~
 
@@ -82,10 +82,19 @@ C2026 without changing the served assets or WebUI capability.
 - Breeze-TTS-2.cpp: a0e177f91242ebbd2ea8d61548d742c89e4b9e06
 - ggml: 36da57138425487184aa1da2eee2cde155909c6f
 - SPIRV-Headers (vulkan-sdk-1.3.296.0): 2a9b6f951c7d6b04b6c21fe1bf3f475b68b84801
-- controls SHA-256: 5d4e5e3b69c0fa1f81bb4d291b78764270c6dbb18656e2a4ce4bce9f2dbabf4e
+- controls SHA-256: 12c938d19fcf612bbfffc39791b7741d0303c2ffb6cfd554034e08051c25e9b3
 
 Read bundled notices before redistribution. The model licence is separate from
 the package licence.
+
+## Early streaming cadence (0.1.0rc3)
+
+The second chunk stays small before resuming the existing ramp.
+With the default first4/max6 profile this produces 4, 4, 6, 6 frames. The first
+chunk and steady-state chunk size are unchanged; the second chunk arrives earlier
+to preserve headroom when pitch-preserving tempo processing retains some audio.
+No playback buffer is added. Native per-request timings remain in WebSocket
+metrics; redundant console writes no longer block completion and the tempo tail.
 
 ## Portable performance build (0.1.0rc2)
 
