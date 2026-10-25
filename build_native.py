@@ -158,11 +158,12 @@ def configure_spirv_headers(source: Path, build: Path, install: Path,
     return configs[0].parent
 
 
-def cmake_definitions(sdk: Path | None, platform: str = "") -> list[str]:
+def cmake_definitions(sdk: Path | None, platform: str = "",
+                      backend: str = "vulkan") -> list[str]:
     result = ["-DCMAKE_BUILD_TYPE=Release"]
     result.extend(
         f"-D{name}={value}"
-        for name, value in build_package.REQUIRED_CACHE_FLAGS.items()
+        for name, value in build_package.backend_profile(backend)["cache_flags"].items()
     )
     if platform == "win_amd64":
         result.append("-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded")
@@ -181,13 +182,14 @@ def cmake_definitions(sdk: Path | None, platform: str = "") -> list[str]:
 def configure_and_build(source: Path, build: Path, platform: str,
                         generator: str, sdk: Path | None,
                         cmake_args: Iterable[str],
-                        spirv_headers_dir: Path | None = None) -> None:
+                        spirv_headers_dir: Path | None = None,
+                        backend: str = "vulkan") -> None:
     build.mkdir(parents=True, exist_ok=True)
     command = ["cmake", "-S", os.fspath(source), "-B", os.fspath(build),
                "-G", generator]
     if platform == "win_amd64" and generator.lower().startswith("visual studio"):
         command.extend(["-A", "x64"])
-    command.extend(cmake_definitions(sdk, platform))
+    command.extend(cmake_definitions(sdk, platform, backend))
     command.extend(cmake_args)
     if spirv_headers_dir:
         command.append(f"-DSPIRV-Headers_DIR={spirv_headers_dir.resolve()}")
@@ -210,7 +212,7 @@ def configure_and_build(source: Path, build: Path, platform: str,
 
 
 def stage_and_package(source: Path, build: Path, stage: Path, platform: str,
-                      wheelhouse: Path) -> list[Path]:
+                      wheelhouse: Path, backend: str = "vulkan") -> list[Path]:
     if stage.exists() and any(stage.iterdir()):
         raise NativeBuildError(f"stage is not empty: {stage}")
     if wheelhouse.exists() and any(wheelhouse.iterdir()):
@@ -223,6 +225,7 @@ def stage_and_package(source: Path, build: Path, stage: Path, platform: str,
         "BREEZE_BUILD_DIR": os.fspath(build),
         "BREEZE_NATIVE_STAGE_DIR": os.fspath(stage),
         "BREEZE_WHEEL_PLATFORM": platform,
+        "BREEZE_NATIVE_BACKEND": backend,
     })
     _run([sys.executable, "-B", os.fspath(build_package.ROOT / "build_package.py")],
          cwd=build_package.ROOT, env=env)
@@ -247,10 +250,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--generator", default=default_generator)
     parser.add_argument("--vulkan-sdk", type=Path)
     parser.add_argument("--cmake-arg", action="append", default=[])
+    parser.add_argument("--backend", choices=sorted(build_package.BACKENDS),
+                        default="vulkan",
+                        help="GPU backend; cuda12 builds the separate NVIDIA package")
     args = parser.parse_args(argv)
+    if args.platform not in build_package.backend_profile(args.backend)["platforms"]:
+        parser.error(f"--backend {args.backend} does not support {args.platform}")
     base = (args.work_dir or
             Path(tempfile.gettempdir()) / "realtimetts-breeze-native" /
-            args.platform).resolve()
+            (args.platform if args.backend == "vulkan" else f"{args.platform}-{args.backend}")).resolve()
     source = (args.source_dir or base / "source").resolve()
     build = (args.build_dir or base / "build").resolve()
     spirv_headers_source = (base / "spirv-headers").resolve()
@@ -266,15 +274,17 @@ def main(argv: list[str] | None = None) -> int:
     ensure_pinned_source(source)
     apply_controls(source)
     prepare_webui_embed(source)
-    ensure_pinned_spirv_headers(spirv_headers_source)
-    spirv_headers_dir = configure_spirv_headers(
-        spirv_headers_source, spirv_headers_build, spirv_headers_install,
-        args.platform, args.generator
-    )
+    spirv_headers_dir = None
+    if args.backend == "vulkan":
+        ensure_pinned_spirv_headers(spirv_headers_source)
+        spirv_headers_dir = configure_spirv_headers(
+            spirv_headers_source, spirv_headers_build, spirv_headers_install,
+            args.platform, args.generator
+        )
     configure_and_build(source, build, args.platform, args.generator, sdk,
-                        args.cmake_arg, spirv_headers_dir)
+                        args.cmake_arg, spirv_headers_dir, args.backend)
     for artifact in stage_and_package(source, build, stage, args.platform,
-                                      wheelhouse):
+                                      wheelhouse, args.backend):
         print(f"artifact: {artifact}")
     return 0
 

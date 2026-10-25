@@ -36,6 +36,36 @@ REQUIRED_CACHE_FLAGS = {
     "GGML_OPENMP": "OFF",
     "GGML_VULKAN": "ON",
 }
+# The CUDA profile builds the same pinned source for NVIDIA GPUs. Its wheel is a
+# separate distribution so the portable Vulkan wheel stays small.
+CUDA_PACKAGE_NAME = "realtimetts_breeze_native_cuda12"
+CUDA_ARCHITECTURES = "86;89;90;120"
+CUDA_PLATFORMS = frozenset({"linux_x86_64"})
+CUDA_CACHE_FLAGS = {
+    **REQUIRED_CACHE_FLAGS,
+    "BREEZE_CUDA": "ON",
+    "BREEZE_VULKAN": "OFF",
+    "GGML_CUDA": "ON",
+    "GGML_VULKAN": "OFF",
+    "CMAKE_CUDA_ARCHITECTURES": CUDA_ARCHITECTURES,
+}
+BACKENDS = {
+    "vulkan": {
+        "package": PACKAGE_NAME,
+        "platforms": PLATFORMS,
+        "cache_flags": REQUIRED_CACHE_FLAGS,
+        "host_runtime_dependencies": ["Vulkan loader and ICD supplied by host"],
+    },
+    "cuda12": {
+        "package": CUDA_PACKAGE_NAME,
+        "platforms": CUDA_PLATFORMS,
+        "cache_flags": CUDA_CACHE_FLAGS,
+        "host_runtime_dependencies": [
+            "NVIDIA driver (libcuda.so.1) supplied by host",
+            "CUDA 12 runtime and cuBLAS from the nvidia-cuda-runtime-cu12 and nvidia-cublas-cu12 wheels",
+        ],
+    },
+}
 ROOT = Path(__file__).resolve().parent
 CONTROL_PATCH = ROOT / "tools" / "breeze_cpp_controls.json"
 
@@ -82,6 +112,10 @@ def _cache(path: Path) -> dict[str, str]:
     return values
 
 
+def native_backend() -> str:
+    return os.environ.get("BREEZE_NATIVE_BACKEND", "vulkan").strip() or "vulkan"
+
+
 def _env(name: str) -> Path:
     value = os.environ.get(name, "").strip()
     if not value:
@@ -89,8 +123,16 @@ def _env(name: str) -> Path:
     return Path(value).resolve()
 
 
-def worker_filename(platform: str) -> str:
-    if platform not in PLATFORMS:
+def backend_profile(backend: str) -> dict:
+    if backend not in BACKENDS:
+        raise BuildInputError(
+            f"native backend must be one of {sorted(BACKENDS)}, got {backend!r}"
+        )
+    return BACKENDS[backend]
+
+
+def worker_filename(platform: str, backend: str = "vulkan") -> str:
+    if platform not in backend_profile(backend)["platforms"]:
         raise BuildInputError(
             f"native wheel platform must be one of {sorted(PLATFORMS)}, got {platform!r}"
         )
@@ -121,14 +163,17 @@ def _runtime_dlls(binary: Path, platform: str) -> list[Path]:
     )
 
 def assemble(
-    source_dir: Path, build_dir: Path, stage_dir: Path, platform: str
+    source_dir: Path, build_dir: Path, stage_dir: Path, platform: str,
+    backend: str = "vulkan",
 ) -> Path:
     source, build, stage = (
         source_dir.resolve(),
         build_dir.resolve(),
         stage_dir.resolve(),
     )
-    name = worker_filename(platform)
+    profile = backend_profile(backend)
+    package, cache_flags = profile["package"], profile["cache_flags"]
+    name = worker_filename(platform, backend)
     if stage.is_relative_to(ROOT):
         raise BuildInputError(f"staging must be outside the repository: {stage}")
     if not source.is_dir() or not build.is_dir():
@@ -145,7 +190,7 @@ def assemble(
         raise BuildInputError("CMAKE_HOME_DIRECTORY does not match BREEZE_SOURCE_DIR")
     if cache.get("CMAKE_BUILD_TYPE", "").lower() != "release":
         raise BuildInputError("CMAKE_BUILD_TYPE must be Release")
-    for key, expected in REQUIRED_CACHE_FLAGS.items():
+    for key, expected in cache_flags.items():
         if cache.get(key, "").upper() != expected:
             raise BuildInputError(f"CMake flag {key} must be {expected}")
 
@@ -155,7 +200,7 @@ def assemble(
     binary = workers[0]
     if stage.exists() and (not stage.is_dir() or any(stage.iterdir())):
         raise BuildInputError(f"staging directory must be empty: {stage}")
-    payload = stage / PACKAGE_NAME / "bin"
+    payload = stage / package / "bin"
     payload.mkdir(parents=True, exist_ok=True)
     destination = payload / name
     shutil.copy2(binary, destination)
@@ -168,7 +213,8 @@ def assemble(
         "format": 1,
         "version": PACKAGE_VERSION,
         "source_url": UPSTREAM_URL,
-        "distribution": PACKAGE_NAME,
+        "distribution": package,
+        "backend": backend,
         "platform": platform,
         "source_revision": UPSTREAM_REVISION,
         "ggml_revision": GGML_REVISION,
@@ -179,11 +225,11 @@ def assemble(
         "native_dependencies": [
             {"name": path.name, "sha256": _hash(path)} for path in dependencies
         ],
-        "host_runtime_dependencies": ["Vulkan loader and ICD supplied by host"],
+        "host_runtime_dependencies": profile["host_runtime_dependencies"],
         "cmake": {
             "source_matches": True,
             "build_type": "Release",
-            "cache_flags": REQUIRED_CACHE_FLAGS,
+            "cache_flags": cache_flags,
         },
     }
     (payload / "build-info.json").write_text(
@@ -195,13 +241,15 @@ def assemble(
 
 
 def main() -> int:
+    backend = native_backend()
     destination = assemble(
         _env("BREEZE_SOURCE_DIR"),
         _env("BREEZE_BUILD_DIR"),
         _env("BREEZE_NATIVE_STAGE_DIR"),
         os.environ.get("BREEZE_WHEEL_PLATFORM", "").strip(),
+        backend,
     )
-    print(f"Staged {PACKAGE_NAME}: {destination}")
+    print(f"Staged {backend_profile(backend)['package']}: {destination}")
     print(f"Native binary SHA-256: {_hash(destination)}")
     return 0
 

@@ -5,3 +5,4 @@ include build_native.py
 include build_package.py
 recursive-include tools *.py *.json *.cmake
 recursive-include src/realtimetts_breeze_native *.py *.txt
+recursive-include src/realtimetts_breeze_native_cuda12 *.py *.txt
