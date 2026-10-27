@@ -5,8 +5,9 @@ The wheel includes a shell-free launcher, native build provenance, and
 third-party notices. End users install a platform wheel; they do not need a
 C++ compiler, CMake, Vulkan SDK, or local native build.
 
-The 0.1.0rc3 package is a TestPyPI candidate. Release wheels are verified
-against their exact installed runtime artifacts before publication. Model weights, credentials, GPU drivers,
+The 0.1.0rc3 package is a TestPyPI candidate. Release wheels are built by CI
+from a tagged commit on `main` and published with `tools/release.py`, which checks
+their build-info against `build_package.py`. Model weights, credentials, GPU drivers,
 and vendor ICDs are never included.
 
 ## Supported targets
