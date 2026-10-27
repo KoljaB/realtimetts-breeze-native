@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 PACKAGE_NAME = "realtimetts_breeze_native"
-PACKAGE_VERSION = "0.1.0rc3"
+PACKAGE_VERSION = "0.1.0rc4"
 UPSTREAM_URL = "https://github.com/HoppouAI/Breeze-TTS-2.cpp.git"
 UPSTREAM_REVISION = "a0e177f91242ebbd2ea8d61548d742c89e4b9e06"
 GGML_REVISION = "36da57138425487184aa1da2eee2cde155909c6f"

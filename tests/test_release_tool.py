@@ -31,7 +31,7 @@ def wheel(tmp_path: Path, backend: str, **overrides) -> Path:
         "cmake": {"cache_flags": profile["cache_flags"]},
     }
     info.update(overrides)
-    path = tmp_path / f"{profile['package']}-0.1.0rc3-py3-none-manylinux_2_35_x86_64.whl"
+    path = tmp_path / f"{profile['package']}-0.1.0rc4-py3-none-manylinux_2_35_x86_64.whl"
     with zipfile.ZipFile(path, "w") as archive:
         archive.writestr(f"{profile['package']}/bin/breeze-server", binary)
         archive.writestr(f"{profile['package']}/bin/build-info.json", json.dumps(info))

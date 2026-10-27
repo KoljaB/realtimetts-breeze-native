@@ -5,7 +5,7 @@ The wheel includes a shell-free launcher, native build provenance, and
 third-party notices. End users install a platform wheel; they do not need a
 C++ compiler, CMake, Vulkan SDK, or local native build.
 
-The 0.1.0rc3 package is a TestPyPI candidate. Release wheels are built by CI
+The 0.1.0rc4 packages are TestPyPI candidates. Release wheels are built by CI
 from a tagged commit on `main` and published with `tools/release.py`, which checks
 their build-info against `build_package.py`. Model weights, credentials, GPU drivers,
 and vendor ICDs are never included.
@@ -32,7 +32,7 @@ Git checkout and local wheel files are unnecessary. After the preview is publish
 
 ~~~bat
 uv venv --python 3.11 .venv-breeze
-uv pip install --python .venv-breeze --find-links https://test.pypi.org/simple/realtimetts/ --find-links https://test.pypi.org/simple/realtimetts-breeze-native/ "realtimetts[breeze-server]==0.9.0rc12"
+uv pip install --python .venv-breeze --find-links https://test.pypi.org/simple/realtimetts/ --find-links https://test.pypi.org/simple/realtimetts-breeze-native/ "realtimetts[breeze-server]==0.9.0rc15"
 uv run --no-project --python .venv-breeze python -m RealtimeTTS.breeze_server --reference-prefix-cache --port 18086
 ~~~
 
@@ -46,9 +46,14 @@ Qwen CPU/GPU setup, readiness checks and a tiny Python streaming client.
 To install only the worker:
 
 ~~~bat
-uv pip install --python .venv-breeze --find-links https://test.pypi.org/simple/realtimetts-breeze-native/ "realtimetts-breeze-native==0.1.0rc3"
+uv pip install --python .venv-breeze --find-links https://test.pypi.org/simple/realtimetts-breeze-native/ "realtimetts-breeze-native==0.1.0rc4"
 uv run --no-project --python .venv-breeze python -c "from realtimetts_breeze_native import executable_path; print(executable_path())"
 ~~~
+
+On Linux x86-64 with an NVIDIA GPU, the separate CUDA 12 worker is faster
+(`realtimetts-breeze-native-cuda12==0.1.0rc4`, or `realtimetts[breeze-server,breeze-cuda]`
+with `--find-links https://test.pypi.org/simple/realtimetts-breeze-native-cuda12/`).
+It needs only the NVIDIA driver; the CUDA runtime and cuBLAS come from NVIDIA's wheels.
 
 The native package does not download weights. Model caching and
 `--download-model` belong to RealtimeTTS.
@@ -87,6 +92,14 @@ C2026 without changing the served assets or WebUI capability.
 
 Read bundled notices before redistribution. The model licence is separate from
 the package licence.
+
+## CUDA 12 worker (0.1.0rc4)
+
+0.1.0rc4 rebuilds the unchanged rc3 source and control patch and adds
+`realtimetts-breeze-native-cuda12` for Linux x86-64: the same worker built with
+CUDA for architectures 86, 89, 90 and 120 (machine code for each, PTX for 120).
+On an RTX 4090 it reached the first audible sample about 35 ms sooner than the
+Vulkan worker. Both packages come from one tagged commit and CI run.
 
 ## Early streaming cadence (0.1.0rc3)
 
