@@ -75,7 +75,7 @@ else:
 
 setup(
     name=DISTRIBUTION["name"],
-    version="0.1.0rc5",
+    version="0.1.0rc6",
     description=DISTRIBUTION["description"],
     long_description=(PROJECT_DIR / "README.md").read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",

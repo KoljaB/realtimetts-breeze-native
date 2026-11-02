@@ -12,14 +12,14 @@ from pathlib import Path
 
 
 PACKAGE_NAME = "realtimetts_breeze_native"
-PACKAGE_VERSION = "0.1.0rc5"
+PACKAGE_VERSION = "0.1.0rc6"
 UPSTREAM_URL = "https://github.com/HoppouAI/Breeze-TTS-2.cpp.git"
 UPSTREAM_REVISION = "a0e177f91242ebbd2ea8d61548d742c89e4b9e06"
 GGML_REVISION = "36da57138425487184aa1da2eee2cde155909c6f"
 SPIRV_HEADERS_URL = "https://github.com/KhronosGroup/SPIRV-Headers.git"
 SPIRV_HEADERS_REVISION = "2a9b6f951c7d6b04b6c21fe1bf3f475b68b84801"
 CONTROL_PATCH_SHA256 = (
-    "70e8e270241d5da3d36116d24ec4ff69207aa273db1a35453953d522dac080e0"
+    "ea817f2081cc7545924fd38dbe1112b6554aace03b4e1a52787d8c3a09d03ef9"
 )
 PLATFORMS = frozenset({"linux_x86_64", "win_amd64"})
 REQUIRED_CACHE_FLAGS = {
