@@ -88,10 +88,20 @@ C2026 without changing the served assets or WebUI capability.
 - Breeze-TTS-2.cpp: a0e177f91242ebbd2ea8d61548d742c89e4b9e06
 - ggml: 36da57138425487184aa1da2eee2cde155909c6f
 - SPIRV-Headers (vulkan-sdk-1.3.296.0): 2a9b6f951c7d6b04b6c21fe1bf3f475b68b84801
-- controls SHA-256: 12c938d19fcf612bbfffc39791b7741d0303c2ffb6cfd554034e08051c25e9b3
+- controls SHA-256: 70e8e270241d5da3d36116d24ec4ff69207aa273db1a35453953d522dac080e0 (0.1.0rc5; rc4: 12c938d1…25e9b3)
 
 Read bundled notices before redistribution. The model licence is separate from
 the package licence.
+
+## GPU prewake (0.1.0rc5, not released)
+
+The controls add an opt-in `prewake` stream message, sent before the first text:
+the worker runs 4-frame vocoder passes on silent codes, the size of the first real
+chunk, until text arrives, the stream is cancelled or closed, or `max_ms` passes
+(default 1500, maximum 5000). Each pass try-locks the GPU, so it never queues behind
+another connection. It ends with a `prewake_done` event, and `/health` reports
+`gpu_prewake`. It keeps an idle Windows GPU from starting a reply at idle clocks
+(RealtimeTTS and Miep use it only when the server advertises it).
 
 ## CUDA 12 worker (0.1.0rc4)
 
