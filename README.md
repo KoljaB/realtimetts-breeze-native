@@ -88,12 +88,12 @@ C2026 without changing the served assets or WebUI capability.
 - Breeze-TTS-2.cpp: a0e177f91242ebbd2ea8d61548d742c89e4b9e06
 - ggml: 36da57138425487184aa1da2eee2cde155909c6f
 - SPIRV-Headers (vulkan-sdk-1.3.296.0): 2a9b6f951c7d6b04b6c21fe1bf3f475b68b84801
-- controls SHA-256: ea817f2081cc7545924fd38dbe1112b6554aace03b4e1a52787d8c3a09d03ef9 (0.1.0rc6; rc4: 12c938d1…25e9b3)
+- controls SHA-256: 4e9f771e531774bf58409a06dceebc65add0864589411d79a4a205b4ef9e5b79 (0.1.0rc7; rc4: 12c938d1…25e9b3)
 
 Read bundled notices before redistribution. The model licence is separate from
 the package licence.
 
-## GPU prewake (0.1.0rc6, not released)
+## GPU prewake (0.1.0rc7, not released)
 
 The controls add an opt-in `prewake` stream message, sent before the first text:
 the worker runs 4-frame vocoder passes on silent codes, the size of the first real
@@ -106,6 +106,11 @@ another connection. It ends with a `prewake_done` event, and `/health` reports
 Voice registration waits for the GPU (up to 2 s) instead of answering 409 at once,
 and prewake passes skip the GPU while it waits. In rc5 the back-to-back passes
 made registrations fail with 409 while the user paused.
+
+A synthesis that has to wait for the GPU counts as a waiter too, so a prewake on
+another connection stops taking the GPU. In rc6 such a synthesis waited behind the
+whole prewake (measured: 1281 ms to first PCM, against 281 ms on the woken
+connection and 563 ms with no prewake).
 
 ## CUDA 12 worker (0.1.0rc4)
 
