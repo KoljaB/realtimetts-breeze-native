@@ -78,28 +78,45 @@ Use --source-dir only for a clean checkout at the pinned revision. The lower
 level build_package.py assembler accepts only a completed Release CMake build,
 the exact controls patch, and an empty stage outside this repository.
 
-The build replaces the pinned upstream WebUI embed script with
-tools/embed_webui.cmake. It keeps the WebUI files byte-for-byte unchanged while
-splitting each generated C++ raw literal into bounded chunks, avoiding MSVC
-C2026 without changing the served assets or WebUI capability.
-
 ## Pinned inputs
 
-- Breeze-TTS-2.cpp: a0e177f91242ebbd2ea8d61548d742c89e4b9e06
+- Breeze-TTS-2.cpp: v0.1.6, 87b43667ca5597f826441991e416a279ed7373b9
 - ggml: 36da57138425487184aa1da2eee2cde155909c6f
 - SPIRV-Headers (vulkan-sdk-1.3.296.0): 2a9b6f951c7d6b04b6c21fe1bf3f475b68b84801
-- controls SHA-256: 4e9f771e531774bf58409a06dceebc65add0864589411d79a4a205b4ef9e5b79 (0.1.0rc7; rc4: 12c938d1…25e9b3)
+- controls SHA-256: bfba1d1640da1f1c87d192a61fe8da86e4e92c334e21a5cbf151cb48335e9831 (0.1.0rc8; rc7: 4e9f771e…5b79, rc4: 12c938d1…25e9b3)
 
 Read bundled notices before redistribution. The model licence is separate from
 the package licence.
+
+## Breeze v0.1.6 (0.1.0rc8, not released)
+
+rc8 moves the pinned source from a0e177f (September) to upstream v0.1.6:
+
+- The vocoder keeps its state between flushes and decodes only new frames, and it
+  upsamples with a matmul. Upstream measures about 6.6 -> 2.4 ms per frame on Vulkan.
+- The depth decoder runs all codebooks and their sampling in one GPU graph,
+  about 30% faster per frame.
+- The first chunk sizes itself. `--chunk-first` is a floor: the worker starts with
+  1 frame when the GPU keeps well ahead of playback, and 2, 4 or 8 when it does not.
+  Later flushes go out early when the listener is about to run dry.
+- The CUDA build turns on CUDA graphs (`GGML_CUDA_GRAPHS`).
+- `--parallel N` lets streams share one GPU batch per frame. The default stays 1.
+- Every request runs on one GPU thread (the upstream scheduler). The controls now
+  live there too: stop and pause are polled between frames instead of blocking, a
+  paused stream holds its slot and takes no frames, and the `paused` event follows
+  the audio already sent. The reference-prefix cache is lent to one stream at a time,
+  and a second stream in the same batch prefills in full.
+- The rc3 second-chunk rule is gone; the upstream ramp and early flush replace it.
+- Upstream now embeds the WebUI as byte arrays, so the bounded embed script this
+  package used to install is no longer needed.
 
 ## GPU prewake (0.1.0rc7, not released)
 
 The controls add an opt-in `prewake` stream message, sent before the first text:
 the worker runs 4-frame vocoder passes on silent codes, the size of the first real
 chunk, until text arrives, the stream is cancelled or closed, or `max_ms` passes
-(default 1500, maximum 5000). Each pass try-locks the GPU, so it never queues behind
-another connection. It ends with a `prewake_done` event, and `/health` reports
+(default 1500, maximum 5000). Since rc8 each pass runs on the GPU thread only while no
+stream is queued or generating, so it never delays speech on any connection. It ends with a `prewake_done` event, and `/health` reports
 `gpu_prewake`. It keeps an idle Windows GPU from starting a reply at idle clocks
 (RealtimeTTS and Miep use it only when the server advertises it).
 

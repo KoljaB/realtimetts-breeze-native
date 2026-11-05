@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import os
 import subprocess
 import sys
@@ -13,10 +12,6 @@ from typing import Iterable
 import build_package
 
 UPSTREAM_URL = build_package.UPSTREAM_URL
-UPSTREAM_WEBUI_EMBED_SHA256 = (
-    "4e71bb55410c1dbe3d0a5a3e23d1a4bf1ae550b654058aef36b42dda6d9b36ac"
-)
-WEBUI_EMBED_SCRIPT = build_package.ROOT / "tools" / "embed_webui.cmake"
 
 
 class NativeBuildError(RuntimeError):
@@ -105,32 +100,6 @@ def apply_controls(source: Path) -> None:
     _run([sys.executable, "-B",
           os.fspath(build_package.ROOT / "tools" / "prepare_breeze_cpp.py"),
           os.fspath(source)], cwd=build_package.ROOT)
-
-
-def prepare_webui_embed(source: Path) -> None:
-    target = source / "cmake" / "embed_webui.cmake"
-    replacement = WEBUI_EMBED_SCRIPT.read_bytes()
-    try:
-        current = target.read_bytes()
-    except OSError as exc:
-        raise NativeBuildError(
-            f"cannot read upstream WebUI embed script: {target}"
-        ) from exc
-    if current == replacement:
-        return
-    normalized = current.replace(b"\r\n", b"\n")
-    if hashlib.sha256(normalized).hexdigest() != UPSTREAM_WEBUI_EMBED_SHA256:
-        raise NativeBuildError(
-            "unexpected upstream WebUI embed script; refuse to replace"
-        )
-    temporary = target.with_name(target.name + ".realtimetts-webui.tmp")
-    try:
-        temporary.write_bytes(replacement)
-        temporary.replace(target)
-    except OSError as exc:
-        raise NativeBuildError(
-            f"cannot install bounded WebUI embed script: {target}"
-        ) from exc
 
 
 def configure_spirv_headers(source: Path, build: Path, install: Path,
@@ -273,7 +242,6 @@ def main(argv: list[str] | None = None) -> int:
         raise NativeBuildError(f"Vulkan SDK directory does not exist: {sdk}")
     ensure_pinned_source(source)
     apply_controls(source)
-    prepare_webui_embed(source)
     spirv_headers_dir = None
     if args.backend == "vulkan":
         ensure_pinned_spirv_headers(spirv_headers_source)
