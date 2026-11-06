@@ -5,7 +5,7 @@ The wheel includes a shell-free launcher, native build provenance, and
 third-party notices. End users install a platform wheel; they do not need a
 C++ compiler, CMake, Vulkan SDK, or local native build.
 
-The 0.1.0rc4 packages are TestPyPI candidates. Release wheels are built by CI
+The 0.1.0rc8 packages are TestPyPI candidates. Release wheels are built by CI
 from a tagged commit on `main` and published with `tools/release.py`, which checks
 their build-info against `build_package.py`. Model weights, credentials, GPU drivers,
 and vendor ICDs are never included.
@@ -32,7 +32,7 @@ Git checkout and local wheel files are unnecessary. After the preview is publish
 
 ~~~bat
 uv venv --python 3.11 .venv-breeze
-uv pip install --python .venv-breeze --find-links https://test.pypi.org/simple/realtimetts/ --find-links https://test.pypi.org/simple/realtimetts-breeze-native/ "realtimetts[breeze-server]==0.9.0rc15"
+uv pip install --python .venv-breeze --find-links https://test.pypi.org/simple/realtimetts/ --find-links https://test.pypi.org/simple/realtimetts-breeze-native/ "realtimetts[breeze-server]==0.9.0rc23"
 uv run --no-project --python .venv-breeze python -m RealtimeTTS.breeze_server --reference-prefix-cache --port 18086
 ~~~
 
@@ -46,12 +46,12 @@ Qwen CPU/GPU setup, readiness checks and a tiny Python streaming client.
 To install only the worker:
 
 ~~~bat
-uv pip install --python .venv-breeze --find-links https://test.pypi.org/simple/realtimetts-breeze-native/ "realtimetts-breeze-native==0.1.0rc4"
+uv pip install --python .venv-breeze --find-links https://test.pypi.org/simple/realtimetts-breeze-native/ "realtimetts-breeze-native==0.1.0rc8"
 uv run --no-project --python .venv-breeze python -c "from realtimetts_breeze_native import executable_path; print(executable_path())"
 ~~~
 
 On Linux x86-64 with an NVIDIA GPU, the separate CUDA 12 worker is faster
-(`realtimetts-breeze-native-cuda12==0.1.0rc4`, or `realtimetts[breeze-server,breeze-cuda]`
+(`realtimetts-breeze-native-cuda12==0.1.0rc8`, or `realtimetts[breeze-server,breeze-cuda]`
 with `--find-links https://test.pypi.org/simple/realtimetts-breeze-native-cuda12/`).
 It needs only the NVIDIA driver; the CUDA runtime and cuBLAS come from NVIDIA's wheels.
 
@@ -88,7 +88,7 @@ the exact controls patch, and an empty stage outside this repository.
 Read bundled notices before redistribution. The model licence is separate from
 the package licence.
 
-## Breeze v0.1.6 (0.1.0rc8, not released)
+## Breeze v0.1.6 (0.1.0rc8)
 
 rc8 moves the pinned source from a0e177f (September) to upstream v0.1.6:
 
@@ -110,7 +110,7 @@ rc8 moves the pinned source from a0e177f (September) to upstream v0.1.6:
 - Upstream now embeds the WebUI as byte arrays, so the bounded embed script this
   package used to install is no longer needed.
 
-## GPU prewake (0.1.0rc7, not released)
+## GPU prewake (0.1.0rc7, first released in 0.1.0rc8)
 
 The controls add an opt-in `prewake` stream message, sent before the first text:
 the worker runs 4-frame vocoder passes on silent codes, the size of the first real
