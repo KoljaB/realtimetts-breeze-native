@@ -1,4 +1,4 @@
-"""Prepare HoppouAI/Breeze-TTS-2.cpp a0e177f for native RealtimeTTS controls.
+"""Prepare HoppouAI/Breeze-TTS-2.cpp v0.1.6 (87b4366) for native RealtimeTTS controls.
 
 All anchors are validated before any write. --check only validates that the
 control patch is installed. Existing unrelated content is preserved.
