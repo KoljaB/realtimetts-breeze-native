@@ -1,5 +1,6 @@
 include README.md
 include LICENSE
+include NOTICE
 include AGENTS.md
 include build_native.py
 include build_package.py
