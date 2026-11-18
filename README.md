@@ -10,6 +10,14 @@ from a tagged commit on `main` and published with `tools/release.py`, which chec
 their build-info against `build_package.py`. Model weights, credentials, GPU drivers,
 and vendor ICDs are never included.
 
+CI attests every wheel and sdist it builds (GitHub build provenance), and the
+release uploads those files unchanged. Releases after 0.1.0rc8 can be checked
+with the [GitHub CLI](https://cli.github.com/):
+
+```bash
+gh attestation verify <file> --repo KoljaB/realtimetts-breeze-native
+```
+
 ## Supported targets
 
 The first candidate targets Windows x64 (win_amd64) and Linux x64. Linux
