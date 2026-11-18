@@ -5,7 +5,7 @@ The wheel includes a shell-free launcher, native build provenance, and
 third-party notices. End users install a platform wheel; they do not need a
 C++ compiler, CMake, Vulkan SDK, or local native build.
 
-The 0.1.0rc8 packages are TestPyPI candidates. Release wheels are built by CI
+0.1.0 is the first final release on PyPI. Release wheels are built by CI
 from a tagged commit on `main` and published with `tools/release.py`, which checks
 their build-info against `build_package.py`. Model weights, credentials, GPU drivers,
 and vendor ICDs are never included.
@@ -46,13 +46,12 @@ Qwen CPU/GPU setup, readiness checks and a tiny Python streaming client.
 To install only the worker:
 
 ~~~bat
-uv pip install --python .venv-breeze --find-links https://test.pypi.org/simple/realtimetts-breeze-native/ "realtimetts-breeze-native==0.1.0rc8"
+uv pip install --python .venv-breeze "realtimetts-breeze-native==0.1.0"
 uv run --no-project --python .venv-breeze python -c "from realtimetts_breeze_native import executable_path; print(executable_path())"
 ~~~
 
 On Linux x86-64 with an NVIDIA GPU, the separate CUDA 12 worker is faster
-(`realtimetts-breeze-native-cuda12==0.1.0rc8`, or `realtimetts[breeze-server,breeze-cuda]`
-with `--find-links https://test.pypi.org/simple/realtimetts-breeze-native-cuda12/`).
+(`realtimetts-breeze-native-cuda12==0.1.0`, or `realtimetts[breeze-server,breeze-cuda]`).
 It needs only the NVIDIA driver; the CUDA runtime and cuBLAS come from NVIDIA's wheels.
 
 The native package does not download weights. Model caching and
@@ -80,13 +79,35 @@ the exact controls patch, and an empty stage outside this repository.
 
 ## Pinned inputs
 
-- Breeze-TTS-2.cpp: v0.1.6, 87b43667ca5597f826441991e416a279ed7373b9
+- Breeze-TTS-2.cpp: main after v0.1.7, 155e60818433ea6322367aff8f8436ba790f6fbe (2026-11-15)
 - ggml: 36da57138425487184aa1da2eee2cde155909c6f
 - SPIRV-Headers (vulkan-sdk-1.3.296.0): 2a9b6f951c7d6b04b6c21fe1bf3f475b68b84801
-- controls SHA-256: bfba1d1640da1f1c87d192a61fe8da86e4e92c334e21a5cbf151cb48335e9831 (0.1.0rc8; rc7: 4e9f771e…5b79, rc4: 12c938d1…25e9b3)
+- controls SHA-256: 95c3655729108977dcba75a5fc71252ea7169d54cba67bef2af888651963de49 (0.1.0; rc8: bfba1d16…9831, rc7: 4e9f771e…5b79, rc4: 12c938d1…25e9b3)
 
 Read bundled notices before redistribution. The model licence is separate from
 the package licence.
+
+## Breeze main after v0.1.7 (0.1.0)
+
+0.1.0 moves the pinned source from v0.1.6 to upstream main 155e608 (v0.1.7 plus
+the 2026-11-10 and 2026-11-15 commits). ggml is unchanged. New upstream options,
+all off by default:
+
+- `BREEZE_TE_EMBED_CPU=1` (environment) keeps the text encoder's word table in
+  system memory, about 300 MB less video memory. Upstream measured identical audio
+  and unchanged first audio.
+- `--te-cpu` runs the whole text encoder on the CPU, about 1 GB less video memory,
+  but upstream measured about 0.7 s more before each piece of text.
+- `--idle-unload SECONDS`, `--lazy` and `--before-load CMD`, plus `POST /v1/unload`
+  and `POST /v1/load`: the model can leave the GPU while nothing generates, and the
+  next request loads it back first. `/health` adds `loaded`, `busy` and `idle_seconds`.
+- `--talk` serves upstream's voice call demo at `/talk` (needs tyger-server and an LLM).
+
+The controls are re-anchored to the new scheduler API. With the model off the GPU,
+prewake passes are skipped (a prewake does not load the model), a synthesis or voice
+registration loads it back first, and one that cannot load it gets an `error` event
+or HTTP 503. `/health` keeps the RealtimeTTS capability fields next to the new ones;
+its `backend` name is read once at startup.
 
 ## Breeze v0.1.6 (0.1.0rc8)
 
