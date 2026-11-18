@@ -52,6 +52,15 @@ PROJECTS = {
         "pypi": ("origin", "main"),
         "native_backend": "cuda12",
     },
+    # realtimetts-qwen-native: one repository, the CUDA line on gpu, the CPU line on main.
+    "realtimetts-qwen-native": {
+        "testpypi": ("origin", "gpu"),
+        "pypi": ("origin", "gpu"),
+    },
+    "realtimetts-qwen-native-cpu": {
+        "testpypi": ("origin", "main"),
+        "pypi": ("origin", "main"),
+    },
 }
 INDEX_JSON = {
     "testpypi": "https://test.pypi.org/pypi/{name}/{version}/json",
