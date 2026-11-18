@@ -162,7 +162,11 @@ jobs:
           python build_native.py --platform win_amd64 --generator Ninja --work-dir "$env:RUNNER_TEMP\realtimetts-breeze-native" --wheelhouse "$env:RUNNER_TEMP\realtimetts-breeze-native\wheels" --cmake-arg="-DCMAKE_C_COMPILER=$env:BREEZE_COMPILER/gcc.exe" --cmake-arg="-DCMAKE_CXX_COMPILER=$env:BREEZE_COMPILER/g++.exe" --cmake-arg="-DCMAKE_MAKE_PROGRAM=$env:BREEZE_COMPILER/ninja.exe" --cmake-arg="-DVulkan_INCLUDE_DIR=$env:BREEZE_SDK/include" --cmake-arg="-DVulkan_LIBRARY=$env:BREEZE_SDK/lib/libvulkan-1.dll.a" --cmake-arg="-DVulkan_GLSLC_EXECUTABLE=$env:BREEZE_SDK/bin/glslc.exe" --cmake-arg="-DVulkan_GLSLANG_VALIDATOR_EXECUTABLE=$env:BREEZE_SDK/bin/glslangValidator.exe"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           New-Item -ItemType Directory -Force dist | Out-Null
-          Copy-Item "$env:RUNNER_TEMP\realtimetts-breeze-native\wheels\*" dist\
+          # The sdist of this package comes from the Linux job only, so a run
+          # yields exactly one file of each name.
+          Copy-Item "$env:RUNNER_TEMP\realtimetts-breeze-native\wheels\*.whl" dist\
+          if (@(Get-ChildItem dist -Filter *.tar.gz).Count -ne 0) { throw "unexpected sdist in dist" }
+          if (@(Get-ChildItem dist -Filter *.whl).Count -ne 1) { throw "expected exactly one wheel in dist" }
       - name: Attest build provenance
         if: github.event_name != 'pull_request'
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
