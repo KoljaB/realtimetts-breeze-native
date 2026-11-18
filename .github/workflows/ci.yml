@@ -6,10 +6,14 @@ on:
       - main
       - codex/breeze-portable-cache
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+# Each wheel job attests the files it uploads (not on pull requests). The
+# release uploads them unchanged, so a file downloaded from PyPI verifies with
+#   gh attestation verify <file> --repo KoljaB/realtimetts-breeze-native
 jobs:
   tests:
     name: deterministic package tests
@@ -26,6 +30,10 @@ jobs:
     name: Linux x64 native wheel
     runs-on: ubuntu-22.04
     needs: tests
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -60,6 +68,11 @@ jobs:
           python tools/finalize_wheel.py "$repaired"
           python -m auditwheel show "$repaired"
           cp "$RUNNER_TEMP/realtimetts-breeze-native/wheels/"*.tar.gz dist/repaired/
+      - name: Attest build provenance
+        if: github.event_name != 'pull_request'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/repaired/*
       - uses: actions/upload-artifact@v4
         with:
           name: realtimetts-breeze-native-linux-x64
@@ -69,6 +82,10 @@ jobs:
     name: Linux x64 CUDA 12 native wheel
     runs-on: ubuntu-22.04
     needs: tests
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -104,6 +121,11 @@ jobs:
           python -m auditwheel show "$repaired"
           ls -la dist/repaired
           cp "$RUNNER_TEMP/realtimetts-breeze-native-cuda12/wheels/"*.tar.gz dist/repaired/
+      - name: Attest build provenance
+        if: github.event_name != 'pull_request'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/repaired/*
       - uses: actions/upload-artifact@v4
         with:
           name: realtimetts-breeze-native-cuda12-linux-x64
@@ -113,6 +135,10 @@ jobs:
     name: Windows x64 native wheel
     runs-on: windows-2022
     needs: tests
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -137,6 +163,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           New-Item -ItemType Directory -Force dist | Out-Null
           Copy-Item "$env:RUNNER_TEMP\realtimetts-breeze-native\wheels\*" dist\
+      - name: Attest build provenance
+        if: github.event_name != 'pull_request'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*
       - uses: actions/upload-artifact@v4
         with:
           name: realtimetts-breeze-native-windows-x64
