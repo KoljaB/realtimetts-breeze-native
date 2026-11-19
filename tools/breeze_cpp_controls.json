@@ -177,6 +177,10 @@
       [
         "        m_codes = std::move(job.out.codes);\n        m_frames = job.out.n_frames;\n        m_text = job.out.text;\n    }\n    return ok;\n}\n",
         "        m_codes = std::move(job.out.codes);\n        m_frames = job.out.n_frames;\n        m_text = job.out.text;\n    } else if (ok && job.out.n_frames > 0) {\n        m_recent.push_back(std::move(job.out));\n        int frames = 0, tokens = 0;\n        for (const auto & piece : m_recent) {\n            frames += piece.n_frames;\n            tokens += reference_prefix_token_count(*m_model, piece);\n        }\n        // about three seconds of complete pieces, never an audio tail without its text\n        while (!m_recent.empty() &&\n               (frames > kRecentMaxFrames || tokens > kRecentMaxTokens ||\n                (m_recent.size() > 1 && frames - m_recent.front().n_frames >= kRecentTargetFrames))) {\n            frames -= m_recent.front().n_frames;\n            tokens -= reference_prefix_token_count(*m_model, m_recent.front());\n            m_recent.erase(m_recent.begin());\n        }\n    }\n    return ok;\n}\n"
+      ],
+      [
+        "    ema(pool.step_ms[step_rows], wall);\n",
+        "    // RealtimeTTS: this average sizes the first chunk of the next reply. It used to take every\n    // step whole, so the wide vocoder flushes at the end of a reply, or one step that waited\n    // for another process on the GPU, made the next reply open with 4 or 8 frames. A flush now\n    // counts with at most the cost of a small one, and one slow step with at most a quarter\n    // more than the average.\n    double voc_ms = 0;\n    for (SpeechJob * j : live) voc_ms += j->voc_step_ms;\n    double & step_avg = pool.step_ms[step_rows];\n    double step = wall - voc_ms + std::min(voc_ms, 10.0);\n    if (step_avg > 0) step = std::min(step, step_avg * 1.25);\n    ema(step_avg, step);\n"
       ]
     ]
   },
