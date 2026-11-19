@@ -177,6 +177,10 @@
       [
         "        m_codes = std::move(job.out.codes);\n        m_frames = job.out.n_frames;\n        m_text = job.out.text;\n    }\n    return ok;\n}\n",
         "        m_codes = std::move(job.out.codes);\n        m_frames = job.out.n_frames;\n        m_text = job.out.text;\n    } else if (ok && job.out.n_frames > 0) {\n        m_recent.push_back(std::move(job.out));\n        int frames = 0, tokens = 0;\n        for (const auto & piece : m_recent) {\n            frames += piece.n_frames;\n            tokens += reference_prefix_token_count(*m_model, piece);\n        }\n        // about three seconds of complete pieces, never an audio tail without its text\n        while (!m_recent.empty() &&\n               (frames > kRecentMaxFrames || tokens > kRecentMaxTokens ||\n                (m_recent.size() > 1 && frames - m_recent.front().n_frames >= kRecentTargetFrames))) {\n            frames -= m_recent.front().n_frames;\n            tokens -= reference_prefix_token_count(*m_model, m_recent.front());\n            m_recent.erase(m_recent.begin());\n        }\n    }\n    return ok;\n}\n"
+      ],
+      [
+        "    return headroom >= 1.9 ? 1 : headroom >= 1.5 ? 2 : headroom >= 1.15 ? 4 : 8;\n",
+        "    // RealtimeTTS: one frame from 1.5 on. The next frame then lands about a third of a\n    // frame before the first one has played out, which is more room than the early\n    // flushes of the later chunks leave.\n    return headroom >= 1.5 ? 1 : headroom >= 1.3 ? 2 : headroom >= 1.15 ? 4 : 8;\n"
       ]
     ]
   },
